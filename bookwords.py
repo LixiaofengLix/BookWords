@@ -150,7 +150,7 @@ def dump_words(txt_file, output, with_chinese, is_lemma, blacklist):
     with open(output, 'w', encoding='utf-8') as file:
         file.write(f'word,count,chinese\n')
         for word, count in word_counts:
-            if len(word) > 4 or word in blacklist:
+            if len(word) == 1 or word in blacklist:
                 continue
             if with_chinese:
                 w = _dict.query(word)

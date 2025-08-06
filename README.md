@@ -8,16 +8,16 @@
 
 ```bash
 # 将 epub 文件转换为 txt 文件
-./bookwords.py -t /path/to/epub_file -o /output/txt_file
+python ./bookwords.py -t /path/to/epub_file -o /output/txt_file
 
 # 分析 txt 文件并生成词频列表
-./bookwords.py -i /path/to/txt_file -o /output/csv_file
+python ./bookwords.py -i /path/to/txt_file -o /output/csv_file
 
 # 输出带有中文释义的词频列表
-./bookwords.py -i /path/to/txt_file -o /output/csv_file -c
+python ./bookwords.py -i /path/to/txt_file -o /output/csv_file -c
 
 # 使用黑名单过滤
-./bookwords.py -i /path/to/txt_file -b /path/to/blacklist_file
+python ./bookwords.py -i /path/to/txt_file -b /path/to/blacklist_file
 ```
 
 ### 输出示例
