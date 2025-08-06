@@ -2,14 +2,17 @@ import re
 import os
 import csv
 import argparse
-
-# =============================================================================
-# Convert
-# =============================================================================
 import zipfile
 import html2text
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup
+from collections import defaultdict
+from stardict import StarDict, get_lemma
+
+dictdb = os.path.join(os.path.dirname(__file__), 'dict.db')
+# =============================================================================
+# Convert
+# =============================================================================
 
 def convert_epub(epub_file, output):
     if not os.path.isfile(epub_file):
@@ -84,8 +87,6 @@ def convert_epub(epub_file, output):
 # =============================================================================
 # Dump Words
 # =============================================================================
-from collections import defaultdict
-from stardict import StarDict
 
 def count_words_in_file(file_path):
     """
@@ -120,23 +121,45 @@ def count_words_in_file(file_path):
     
     return dict(word_count)
 
-def dump_words(txt_file, output, with_chinese, blacklist):
-    if with_chinese:
-        db = os.path.join(os.path.dirname(__file__), 'dict.db')
-        sd = StarDict(db, False)
-
+def count_words(txt_file):
     word_counts = count_words_in_file(txt_file)
     sorted_counts = sorted(word_counts.items(), key=lambda x: x[1], reverse=True)
+    return sorted_counts
+
+def count_lemma(txt_file, _dict: StarDict):
+    lemma_counts = defaultdict(int)
+    word_counts = count_words_in_file(txt_file)
+    for word, count in word_counts.items():
+        w = _dict.query(word)
+        lemma = get_lemma(word, w)
+        lemma_counts[lemma] += count
+    sorted_counts = sorted(lemma_counts.items(), key=lambda x: x[1], reverse=True)
+    return sorted_counts
+
+def dump_words(txt_file, output, with_chinese, is_lemma, blacklist):
+
+    if (with_chinese or is_lemma) and not os.path.exists(dictdb):
+        raise Exception('-c -l 命令需要 dict.db 文件')
+    elif with_chinese or is_lemma:
+        _dict = StarDict(dictdb, False)
+
+    if is_lemma:
+        word_counts = count_lemma(txt_file, _dict)
+    else:
+        word_counts = count_words(txt_file)
     with open(output, 'w', encoding='utf-8') as file:
         file.write(f'word,count,chinese\n')
-        for word, count in sorted_counts:
-            if len(word) == 1 or word in blacklist:
+        for word, count in word_counts:
+            if len(word) > 4 or word in blacklist:
                 continue
-            chinese = ''
             if with_chinese:
-                w = sd.query(word)
-                chinese = word if w is None else w['translation'].lstrip().replace(',', '，').replace('\n','; ')
-            file.write(f'{word},{count},{chinese}\n')
+                w = _dict.query(word)
+                if w is None:
+                    continue
+                chinese = w['translation'].lstrip().replace(',', '，').replace('\n','; ')
+                file.write(f'{word},{count},{chinese}\n')
+            else:
+                file.write(f'{word},{count}\n')
 
 def load_blacklist(blacklist_file):
     blacklist = set()
@@ -153,18 +176,21 @@ def main():
     parser.add_argument('-i', '--input', required=True, help="输入文件路径")
     parser.add_argument('-o', '--output', help="输出文件路径")
     parser.add_argument('-c', '--chinese', action='store_true', help="输出中文释义")
+    parser.add_argument('-l', '--lemma', action='store_true', help="转换为原型单词")
     parser.add_argument('-b', '--blacklist', help="黑名单文件路径")
     
     args = parser.parse_args()
     input_file = args.input
     output_file = args.output
     blacklist_file = args.blacklist
-    with_chinese = False if args.chinese is None else True
+    with_chinese = args.chinese
+    is_lemma = args.lemma
 
     print(f'input_file: {input_file}')
     print(f'output_file: {output_file}')
     print(f'blacklist_file: {blacklist_file}')
     print(f'with_chinese: {with_chinese}')
+    print(f'is_lemma: {is_lemma}')
 
     try:
         ext = os.path.splitext(input_file)[1]
@@ -172,7 +198,7 @@ def main():
             blacklist = load_blacklist(blacklist_file)
             if output_file is None:
                 output_file = os.path.splitext(input_file)[0] + '.bookwords.csv'
-            dump_words(input_file, output_file, with_chinese, blacklist)
+            dump_words(input_file, output_file, with_chinese, is_lemma, blacklist)
             print(f"Dump Success: {output_file}")
         elif ext == '.epub':
             if output_file is None:

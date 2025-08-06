@@ -295,3 +295,14 @@ class StarDict (object):
             print(obj['word'])
         results = []
         return tuple(results)
+
+#----------------------------------------------------------------------
+# utils 
+#----------------------------------------------------------------------
+
+def get_lemma(word, w):
+    exchange = "" if w is None else w['exchange']
+    for c in exchange.split('/'):
+        if c.startswith('0:'):
+            return c[2:]
+    return word
