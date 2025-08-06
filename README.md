@@ -2,10 +2,6 @@
 
 用于分析文本中的英文单词并输出词频列表
 
-### 未来计划
-
-1. 支持黑名单功能，用于排除给定单词。 
-
 ### 如何使用
 
 如果需要输出带有中文释义的词频列表，需要先把 `dict.db` 解压到项目根目录
@@ -19,6 +15,9 @@
 
 # 输出带有中文释义的词频列表
 ./bookwords.py -i /path/to/txt_file -o /output/csv_file -c
+
+# 使用黑名单过滤
+./bookwords.py -i /path/to/txt_file -b /path/to/blacklist_file
 ```
 
 ### 输出示例

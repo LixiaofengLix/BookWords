@@ -1,5 +1,6 @@
 import re
 import os
+import csv
 import argparse
 
 # =============================================================================
@@ -119,7 +120,7 @@ def count_words_in_file(file_path):
     
     return dict(word_count)
 
-def dump_words(txt_file, output, with_chinese):
+def dump_words(txt_file, output, with_chinese, blacklist):
     if with_chinese:
         db = os.path.join(os.path.dirname(__file__), 'dict.db')
         sd = StarDict(db, False)
@@ -129,7 +130,7 @@ def dump_words(txt_file, output, with_chinese):
     with open(output, 'w', encoding='utf-8') as file:
         file.write(f'word,count,chinese\n')
         for word, count in sorted_counts:
-            if len(word) == 1:
+            if len(word) == 1 or word in blacklist:
                 continue
             chinese = ''
             if with_chinese:
@@ -137,27 +138,41 @@ def dump_words(txt_file, output, with_chinese):
                 chinese = word if w is None else w['translation'].lstrip().replace(',', '，').replace('\n','; ')
             file.write(f'{word},{count},{chinese}\n')
 
+def load_blacklist(blacklist_file):
+    blacklist = set()
+    if blacklist_file is not None:
+        with open(blacklist_file, 'r', encoding='utf-8') as file:
+            reader = csv.reader(file)
+            next(reader)  
+            for row in reader:
+                blacklist.add(row[0])
+    return blacklist
+
 def main():
     parser = argparse.ArgumentParser(description="文本词频分析工具")
     parser.add_argument('-i', '--input', required=True, help="输入文件路径")
     parser.add_argument('-o', '--output', help="输出文件路径")
     parser.add_argument('-c', '--chinese', action='store_true', help="输出中文释义")
+    parser.add_argument('-b', '--blacklist', help="黑名单文件路径")
     
     args = parser.parse_args()
     input_file = args.input
     output_file = args.output
+    blacklist_file = args.blacklist
     with_chinese = False if args.chinese is None else True
 
     print(f'input_file: {input_file}')
     print(f'output_file: {output_file}')
+    print(f'blacklist_file: {blacklist_file}')
     print(f'with_chinese: {with_chinese}')
 
     try:
         ext = os.path.splitext(input_file)[1]
         if ext == '.txt':
+            blacklist = load_blacklist(blacklist_file)
             if output_file is None:
                 output_file = os.path.splitext(input_file)[0] + '.bookwords.csv'
-            dump_words(input_file, output_file, with_chinese)
+            dump_words(input_file, output_file, with_chinese, blacklist)
             print(f"Dump Success: {output_file}")
         elif ext == '.epub':
             if output_file is None:
